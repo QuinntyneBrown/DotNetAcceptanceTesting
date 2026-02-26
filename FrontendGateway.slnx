@@ -7,11 +7,8 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ClientEventHub.AcceptanceTests/ClientEventHub.AcceptanceTests.csproj" />
-    <Project Path="tests/ClientEventHub.Tests/ClientEventHub.Tests.csproj" />
     <Project Path="tests/FrontendGateway.Api.AcceptanceTests/FrontendGateway.Api.AcceptanceTests.csproj" />
-    <Project Path="tests/FrontendGateway.Api.Tests/FrontendGateway.Api.Tests.csproj" />
     <Project Path="tests/Shared.Tests/Shared.Tests.csproj" />
     <Project Path="tests/TelemetryIngest.AcceptanceTests/TelemetryIngest.AcceptanceTests.csproj" />
-    <Project Path="tests/TelemetryIngest.Tests/TelemetryIngest.Tests.csproj" />
   </Folder>
 </Solution>

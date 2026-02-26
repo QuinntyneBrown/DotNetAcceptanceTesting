@@ -3,9 +3,9 @@ using Shared;
 using Shared.Ccsds;
 using Shared.Messages.Telemetry;
 
-namespace TelemetryIngest.Tests;
+namespace TelemetryIngest.AcceptanceTests;
 
-public class TelemetryIngestIntegrationTests : IDisposable
+public class TelemetryIngestAcceptanceTests : IDisposable
 {
     private readonly TelemetryIngestFactory _factory;
 
@@ -14,7 +14,7 @@ public class TelemetryIngestIntegrationTests : IDisposable
         PropertyNameCaseInsensitive = true
     };
 
-    public TelemetryIngestIntegrationTests()
+    public TelemetryIngestAcceptanceTests()
     {
         _factory = new TelemetryIngestFactory();
         // CreateClient boots the host, which starts the BackgroundService
