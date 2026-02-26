@@ -4,9 +4,11 @@
     <Project Path="src/FrontendGateway.Api/FrontendGateway.Api.csproj" />
     <Project Path="src/Shared/Shared.csproj" />
     <Project Path="src/TelemetryIngest/TelemetryIngest.csproj" />
+    <Project Path="src/EventStore/EventStore.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ClientEventHub.AcceptanceTests/ClientEventHub.AcceptanceTests.csproj" />
+    <Project Path="tests/EventStore.AcceptanceTests/EventStore.AcceptanceTests.csproj" />
     <Project Path="tests/FrontendGateway.Api.AcceptanceTests/FrontendGateway.Api.AcceptanceTests.csproj" />
     <Project Path="tests/Shared.Tests/Shared.Tests.csproj" />
     <Project Path="tests/TelemetryIngest.AcceptanceTests/TelemetryIngest.AcceptanceTests.csproj" />

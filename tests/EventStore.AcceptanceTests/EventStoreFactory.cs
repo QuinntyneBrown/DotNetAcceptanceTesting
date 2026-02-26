@@ -1,30 +1,30 @@
+using EventStore.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Shared.Messaging;
 using Shared.Messaging.Redis;
-using TelemetryIngest.Receivers;
 
-namespace TelemetryIngest.AcceptanceTests;
+namespace EventStore.AcceptanceTests;
 
-public sealed class TelemetryIngestFactory : IAsyncDisposable
+public sealed class EventStoreFactory : IAsyncDisposable
 {
     private IHost _host = default!;
 
     public InMemoryPubSub PubSub { get; private set; } = default!;
-    public InMemoryPacketReceiver PacketReceiver { get; private set; } = default!;
+    public InMemoryEventRepository EventRepository { get; private set; } = default!;
 
     public async Task InitializeAsync()
     {
         var logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
         PubSub = new InMemoryPubSub(logger);
-        PacketReceiver = new InMemoryPacketReceiver();
+        EventRepository = new InMemoryEventRepository();
 
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices((context, services) =>
             {
-                services.AddTelemetryIngestServices(context.Configuration);
+                services.AddEventStoreServices(context.Configuration);
 
                 // Replace Redis with InMemoryPubSub
                 services.RemoveAll<RedisPubSub>();
@@ -35,9 +35,10 @@ public sealed class TelemetryIngestFactory : IAsyncDisposable
                 services.AddSingleton<IMessagePublisher>(PubSub);
                 services.AddSingleton<IMessageSubscriber>(PubSub);
 
-                // Replace UDP receiver with InMemoryPacketReceiver
-                services.RemoveAll<IPacketReceiver>();
-                services.AddSingleton<IPacketReceiver>(PacketReceiver);
+                // Replace Couchbase with InMemoryEventRepository
+                services.RemoveAll<CouchbaseEventRepository>();
+                services.RemoveAll<IEventRepository>();
+                services.AddSingleton<IEventRepository>(EventRepository);
             })
             .Build();
 

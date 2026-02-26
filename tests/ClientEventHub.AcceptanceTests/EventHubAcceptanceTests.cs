@@ -1,13 +1,14 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR.Client;
+using NUnit.Framework;
 using Shared;
 using Shared.Messages.Events;
 
 namespace ClientEventHub.AcceptanceTests;
 
-public class EventHubAcceptanceTests : IAsyncLifetime
+public class EventHubAcceptanceTests
 {
-    private readonly ClientEventHubFactory _factory;
+    private ClientEventHubFactory _factory = default!;
     private HubConnection _hubConnection = default!;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -15,13 +16,10 @@ public class EventHubAcceptanceTests : IAsyncLifetime
         PropertyNameCaseInsensitive = true
     };
 
-    public EventHubAcceptanceTests()
+    [SetUp]
+    public async Task SetUp()
     {
         _factory = new ClientEventHubFactory();
-    }
-
-    public async Task InitializeAsync()
-    {
         var client = _factory.CreateClient();
 
         _hubConnection = new HubConnectionBuilder()
@@ -34,13 +32,14 @@ public class EventHubAcceptanceTests : IAsyncLifetime
         await _hubConnection.StartAsync();
     }
 
-    public async Task DisposeAsync()
+    [TearDown]
+    public async Task TearDown()
     {
         await _hubConnection.DisposeAsync();
         _factory.Dispose();
     }
 
-    [Fact]
+    [Test]
     public async Task MissionCreatedEvent_is_forwarded_to_subscribed_SignalR_client()
     {
         // Arrange
@@ -71,16 +70,16 @@ public class EventHubAcceptanceTests : IAsyncLifetime
         // Assert — SignalR client receives the event
         var (eventType, payload) = await received.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.Equal(Channels.MissionCreatedEvent, eventType);
+        Assert.That(eventType, Is.EqualTo(Channels.MissionCreatedEvent));
 
         var deserialized = payload.Deserialize<MissionCreatedEvent>(JsonOptions);
-        Assert.NotNull(deserialized);
-        Assert.Equal(missionId, deserialized.MissionId);
-        Assert.Equal("Artemis IV", deserialized.MissionName);
-        Assert.Equal("KSC LC-39B", deserialized.LaunchSite);
+        Assert.That(deserialized, Is.Not.Null);
+        Assert.That(deserialized!.MissionId, Is.EqualTo(missionId));
+        Assert.That(deserialized.MissionName, Is.EqualTo("Artemis IV"));
+        Assert.That(deserialized.LaunchSite, Is.EqualTo("KSC LC-39B"));
     }
 
-    [Fact]
+    [Test]
     public async Task MissionUpdatedEvent_is_forwarded_to_subscribed_SignalR_client()
     {
         var received = new TaskCompletionSource<(string EventType, JsonElement Payload)>(
@@ -109,15 +108,15 @@ public class EventHubAcceptanceTests : IAsyncLifetime
         // Assert
         var (eventType, payload) = await received.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.Equal(Channels.MissionUpdatedEvent, eventType);
+        Assert.That(eventType, Is.EqualTo(Channels.MissionUpdatedEvent));
 
         var deserialized = payload.Deserialize<MissionUpdatedEvent>(JsonOptions);
-        Assert.NotNull(deserialized);
-        Assert.Equal(missionId, deserialized.MissionId);
-        Assert.Equal("Artemis IV - Revised", deserialized.MissionName);
+        Assert.That(deserialized, Is.Not.Null);
+        Assert.That(deserialized!.MissionId, Is.EqualTo(missionId));
+        Assert.That(deserialized.MissionName, Is.EqualTo("Artemis IV - Revised"));
     }
 
-    [Fact]
+    [Test]
     public async Task MissionDeletedEvent_is_forwarded_to_subscribed_SignalR_client()
     {
         var received = new TaskCompletionSource<(string EventType, JsonElement Payload)>(
@@ -142,14 +141,14 @@ public class EventHubAcceptanceTests : IAsyncLifetime
         // Assert
         var (eventType, payload) = await received.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.Equal(Channels.MissionDeletedEvent, eventType);
+        Assert.That(eventType, Is.EqualTo(Channels.MissionDeletedEvent));
 
         var deserialized = payload.Deserialize<MissionDeletedEvent>(JsonOptions);
-        Assert.NotNull(deserialized);
-        Assert.Equal(missionId, deserialized.MissionId);
+        Assert.That(deserialized, Is.Not.Null);
+        Assert.That(deserialized!.MissionId, Is.EqualTo(missionId));
     }
 
-    [Fact]
+    [Test]
     public async Task Client_does_not_receive_events_for_unsubscribed_channels()
     {
         var received = false;
@@ -170,10 +169,10 @@ public class EventHubAcceptanceTests : IAsyncLifetime
         });
 
         await Task.Delay(500);
-        Assert.False(received);
+        Assert.That(received, Is.False);
     }
 
-    [Fact]
+    [Test]
     public async Task Client_stops_receiving_after_unsubscribe()
     {
         var receivedCount = 0;
@@ -194,7 +193,7 @@ public class EventHubAcceptanceTests : IAsyncLifetime
         });
 
         await Task.Delay(500);
-        Assert.Equal(1, receivedCount);
+        Assert.That(receivedCount, Is.EqualTo(1));
 
         // Unsubscribe
         await _hubConnection.InvokeAsync("UnsubscribeFromEvent", Channels.MissionCreatedEvent);
@@ -208,10 +207,10 @@ public class EventHubAcceptanceTests : IAsyncLifetime
         });
 
         await Task.Delay(500);
-        Assert.Equal(1, receivedCount);
+        Assert.That(receivedCount, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Multiple_clients_subscribed_to_same_event_both_receive_it()
     {
         // Set up second connection
@@ -252,7 +251,7 @@ public class EventHubAcceptanceTests : IAsyncLifetime
         var result1 = await received1.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var result2 = await received2.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.Equal(Channels.MissionCreatedEvent, result1);
-        Assert.Equal(Channels.MissionCreatedEvent, result2);
+        Assert.That(result1, Is.EqualTo(Channels.MissionCreatedEvent));
+        Assert.That(result2, Is.EqualTo(Channels.MissionCreatedEvent));
     }
 }

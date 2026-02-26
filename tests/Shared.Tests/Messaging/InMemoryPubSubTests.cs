@@ -1,3 +1,4 @@
+using NUnit.Framework;
 using Serilog;
 using Shared.Messaging;
 
@@ -5,15 +6,16 @@ namespace Shared.Tests.Messaging;
 
 public class InMemoryPubSubTests
 {
-    private readonly InMemoryPubSub _pubSub;
+    private InMemoryPubSub _pubSub = default!;
 
-    public InMemoryPubSubTests()
+    [SetUp]
+    public void SetUp()
     {
         var logger = new LoggerConfiguration().CreateLogger();
         _pubSub = new InMemoryPubSub(logger);
     }
 
-    [Fact]
+    [Test]
     public async Task PublishAsync_delivers_message_to_subscriber()
     {
         var received = new TaskCompletionSource<TestMessage>(
@@ -28,11 +30,11 @@ public class InMemoryPubSubTests
         await _pubSub.PublishAsync("test-channel", new TestMessage { Value = 42, Name = "alpha" });
 
         var result = await received.Task.WaitAsync(TimeSpan.FromSeconds(3));
-        Assert.Equal(42, result.Value);
-        Assert.Equal("alpha", result.Name);
+        Assert.That(result.Value, Is.EqualTo(42));
+        Assert.That(result.Name, Is.EqualTo("alpha"));
     }
 
-    [Fact]
+    [Test]
     public async Task PublishAsync_does_not_deliver_to_different_channel()
     {
         var received = false;
@@ -46,10 +48,10 @@ public class InMemoryPubSubTests
         await _pubSub.PublishAsync("channel-b", new TestMessage { Value = 1 });
 
         await Task.Delay(100);
-        Assert.False(received);
+        Assert.That(received, Is.False);
     }
 
-    [Fact]
+    [Test]
     public async Task PublishAsync_delivers_to_multiple_subscribers()
     {
         var count = 0;
@@ -69,10 +71,10 @@ public class InMemoryPubSubTests
         await _pubSub.PublishAsync("multi", new TestMessage { Value = 1 });
 
         await Task.Delay(100);
-        Assert.Equal(2, count);
+        Assert.That(count, Is.EqualTo(2));
     }
 
-    [Fact]
+    [Test]
     public async Task UnsubscribeAsync_stops_delivery()
     {
         var count = 0;
@@ -85,16 +87,16 @@ public class InMemoryPubSubTests
 
         await _pubSub.PublishAsync("unsub", new TestMessage { Value = 1 });
         await Task.Delay(50);
-        Assert.Equal(1, count);
+        Assert.That(count, Is.EqualTo(1));
 
         await _pubSub.UnsubscribeAsync("unsub");
 
         await _pubSub.PublishAsync("unsub", new TestMessage { Value = 2 });
         await Task.Delay(50);
-        Assert.Equal(1, count);
+        Assert.That(count, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task PublishAsync_handler_exception_does_not_break_other_subscribers()
     {
         var received = new TaskCompletionSource<TestMessage>(
@@ -112,16 +114,14 @@ public class InMemoryPubSubTests
         await _pubSub.PublishAsync("error-test", new TestMessage { Value = 99 });
 
         var result = await received.Task.WaitAsync(TimeSpan.FromSeconds(3));
-        Assert.Equal(99, result.Value);
+        Assert.That(result.Value, Is.EqualTo(99));
     }
 
-    [Fact]
-    public async Task PublishAsync_with_no_subscribers_does_not_throw()
+    [Test]
+    public void PublishAsync_with_no_subscribers_does_not_throw()
     {
-        var exception = await Record.ExceptionAsync(() =>
+        Assert.DoesNotThrowAsync(() =>
             _pubSub.PublishAsync("empty", new TestMessage { Value = 1 }));
-
-        Assert.Null(exception);
     }
 
     private class TestMessage

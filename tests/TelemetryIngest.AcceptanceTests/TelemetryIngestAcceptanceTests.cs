@@ -1,32 +1,28 @@
-using System.Text.Json;
+using NUnit.Framework;
 using Shared;
 using Shared.Ccsds;
 using Shared.Messages.Telemetry;
 
 namespace TelemetryIngest.AcceptanceTests;
 
-public class TelemetryIngestAcceptanceTests : IDisposable
+public class TelemetryIngestAcceptanceTests
 {
-    private readonly TelemetryIngestFactory _factory;
+    private TelemetryIngestFactory _factory = default!;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
-    public TelemetryIngestAcceptanceTests()
+    [SetUp]
+    public async Task SetUp()
     {
         _factory = new TelemetryIngestFactory();
-        // CreateClient boots the host, which starts the BackgroundService
-        _factory.CreateClient();
+        await _factory.InitializeAsync();
     }
 
-    public void Dispose()
+    [TearDown]
+    public async Task TearDown()
     {
-        _factory.Dispose();
+        await _factory.DisposeAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task Telemetry_packet_is_parsed_and_published_to_correct_APID_channel()
     {
         // Arrange — build a CCSDS telemetry packet with APID 42
@@ -57,16 +53,16 @@ public class TelemetryIngestAcceptanceTests : IDisposable
         // Assert — verify the published PubSub message
         var published = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.Equal(0, published.VersionNumber);
-        Assert.False(published.IsCommand);
-        Assert.False(published.HasSecondaryHeader);
-        Assert.Equal(42, published.Apid);
-        Assert.Equal((byte)SequenceFlag.Unsegmented, published.SequenceFlags);
-        Assert.Equal(100, published.SequenceCount);
-        Assert.Equal(Convert.ToBase64String(dataField), published.DataFieldBase64);
+        Assert.That(published.VersionNumber, Is.EqualTo(0));
+        Assert.That(published.IsCommand, Is.False);
+        Assert.That(published.HasSecondaryHeader, Is.False);
+        Assert.That(published.Apid, Is.EqualTo(42));
+        Assert.That(published.SequenceFlags, Is.EqualTo((byte)SequenceFlag.Unsegmented));
+        Assert.That(published.SequenceCount, Is.EqualTo(100));
+        Assert.That(published.DataFieldBase64, Is.EqualTo(Convert.ToBase64String(dataField)));
     }
 
-    [Fact]
+    [Test]
     public async Task Telecommand_packet_is_parsed_with_correct_packet_type()
     {
         ushort apid = 200;
@@ -94,13 +90,13 @@ public class TelemetryIngestAcceptanceTests : IDisposable
 
         var published = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.True(published.IsCommand);
-        Assert.True(published.HasSecondaryHeader);
-        Assert.Equal(200, published.Apid);
-        Assert.Equal(7, published.SequenceCount);
+        Assert.That(published.IsCommand, Is.True);
+        Assert.That(published.HasSecondaryHeader, Is.True);
+        Assert.That(published.Apid, Is.EqualTo(200));
+        Assert.That(published.SequenceCount, Is.EqualTo(7));
     }
 
-    [Fact]
+    [Test]
     public async Task Different_APIDs_route_to_different_channels()
     {
         ushort apid1 = 10;
@@ -136,13 +132,13 @@ public class TelemetryIngestAcceptanceTests : IDisposable
         var msg1 = await received1.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var msg2 = await received2.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.Equal(10, msg1.Apid);
-        Assert.Equal(1, msg1.SequenceCount);
-        Assert.Equal(20, msg2.Apid);
-        Assert.Equal(2, msg2.SequenceCount);
+        Assert.That(msg1.Apid, Is.EqualTo(10));
+        Assert.That(msg1.SequenceCount, Is.EqualTo(1));
+        Assert.That(msg2.Apid, Is.EqualTo(20));
+        Assert.That(msg2.SequenceCount, Is.EqualTo(2));
     }
 
-    [Fact]
+    [Test]
     public async Task Idle_packets_are_not_published()
     {
         var received = false;
@@ -160,8 +156,7 @@ public class TelemetryIngestAcceptanceTests : IDisposable
 
         await _factory.PacketReceiver.Writer.WriteAsync(idlePacket);
 
-        // Give the service time to process (and skip) the idle packet,
-        // then send a real packet to prove the service is still running
+        // Send a real packet to prove the service is still running
         var realReceived = new TaskCompletionSource<CcsdsTelemetryMessage>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -178,10 +173,10 @@ public class TelemetryIngestAcceptanceTests : IDisposable
 
         await realReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.False(received, "Idle packets should not be published to PubSub");
+        Assert.That(received, Is.False, "Idle packets should not be published to PubSub");
     }
 
-    [Fact]
+    [Test]
     public async Task Multiple_packets_are_processed_in_sequence()
     {
         ushort apid = 55;
@@ -209,7 +204,7 @@ public class TelemetryIngestAcceptanceTests : IDisposable
 
         await allReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.Equal(3, receivedCounts.Count);
-        Assert.Equal([0, 1, 2], receivedCounts.Order().ToList());
+        Assert.That(receivedCounts, Has.Count.EqualTo(3));
+        Assert.That(receivedCounts.Order().ToList(), Is.EqualTo(new List<ushort> { 0, 1, 2 }));
     }
 }
