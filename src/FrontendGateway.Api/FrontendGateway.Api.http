@@ -1,0 +1,6 @@
+@FrontendGateway.Api_HostAddress = http://localhost:5264
+
+GET {{FrontendGateway.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
